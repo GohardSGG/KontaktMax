@@ -1,0 +1,172 @@
+/* ===================== Neumorphic Design System ===================== */
+
+:root {
+  --bg-primary: #2c2f36;
+  --bg-secondary: #363a42;
+  --bg-tertiary: #404651;
+  --shadow-light: rgba(255, 255, 255, 0.08);
+  --shadow-dark: rgba(0, 0, 0, 0.35);
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --text-muted: #718096;
+  --accent-blue: #667eea;
+  --neumorphism-raised: 
+    3px 3px 6px var(--shadow-dark),
+    -3px -3px 6px var(--shadow-light);
+  --neumorphism-pressed: 
+    inset 3px 3px 6px var(--shadow-dark),
+    inset -3px -3px 6px var(--shadow-light);
+}
+
+/* ===================== Global Styles ===================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  background: transparent !important;
+}
+
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #2c2f36 0%, #363a42 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===================== Header ===================== */
+
+.header {
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: var(--neumorphism-raised);
+  border-radius: 9px 9px 0 0;
+}
+
+.header .title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.window-controls {
+    display: flex;
+    align-items: center;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  padding: 0.4rem;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-secondary);
+  transition: background-color 0.2s ease;
+}
+
+.icon-btn:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* ===================== Main Content ===================== */
+
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  padding: 1rem;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.sheet-panel {
+  flex: 3; /* Takes up 3/4 of the space */
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: var(--neumorphism-raised);
+}
+
+.side-panel {
+  flex: 1; /* Takes up 1/4 of the space */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.manage-panel, .info-panel {
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 1rem;
+  box-shadow: var(--neumorphism-raised);
+}
+
+.manage-panel {
+    flex-basis: 150px; /* fixed height for manage panel */
+    flex-shrink: 0;
+}
+
+.info-panel {
+    flex-grow: 1; /* info panel takes remaining space */
+}
+
+h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.manage-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.btn {
+  padding: 0.8rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--neumorphism-raised);
+  background: var(--accent-blue);
+  color: white;
+  text-align: center;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: var(--neumorphism-pressed);
+}
+
+.info-content p {
+    color: var(--text-secondary);
+}
