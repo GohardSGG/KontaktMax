@@ -34,6 +34,7 @@ let tabNav: HTMLElement | null;
 let tabContent: HTMLElement | null;
 
 function initializeDOMElements() {
+    // The query now targets the tbody directly, as it's the only part we dynamically fill.
     tableBody = document.querySelector('#library-table tbody');
     summaryElement = document.getElementById('library-summary');
     infoHeader = document.getElementById('info-header');
@@ -53,7 +54,12 @@ function updateSortVisuals() {
 }
 
 async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
-    document.querySelectorAll('#library-table tbody tr').forEach(r => r.classList.remove('selected'));
+    // Clear previous selection
+    const selectedRow = tableBody?.querySelector('tr.selected');
+    if (selectedRow) {
+        selectedRow.classList.remove('selected');
+    }
+    // Add selection to the new row
     row.classList.add('selected');
 
     if (!infoHeader || !tabContent || !infoPlaceholder) return;
@@ -87,7 +93,7 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
                 link.textContent = details.content_dir;
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
-                    open(details.content_dir as string); // Now calling the correct open function
+                    open(details.content_dir as string);
                 });
                 p.appendChild(link);
                 overviewTab.appendChild(p);
@@ -133,8 +139,10 @@ function sortAndRender() {
     currentLibraries.forEach(lib => {
         const row = tableBody.insertRow();
         row.addEventListener('click', () => handleRowClick(row, lib));
+        
         row.insertCell(0).textContent = lib.name;
         row.insertCell(1).textContent = lib.library_type;
+        
         const statusCell = row.insertCell(2);
         const statusIndicator = document.createElement('span');
         statusIndicator.className = `status-indicator ${lib.registration_status === '3/3' ? 'green' : 'red'}`;
@@ -167,10 +175,8 @@ function setupTabListeners() {
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const tabId = button.dataset.tab;
-            // Update buttons
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
-            // Update content panes
             document.querySelectorAll<HTMLElement>('.tab-pane').forEach(pane => {
                 pane.classList.remove('active');
                 if (pane.id === `tab-${tabId}`) {
@@ -183,25 +189,16 @@ function setupTabListeners() {
     const tabNav = document.querySelector<HTMLElement>('.tab-nav');
     if (tabNav) {
         tabNav.addEventListener('wheel', (e) => {
-            e.preventDefault(); // Prevent page scrolling
-
+            e.preventDefault();
             const buttons = Array.from(tabButtons);
             const currentIndex = buttons.findIndex(btn => btn.classList.contains('active'));
             let nextIndex = currentIndex;
-
-            if (e.deltaY > 0) { // Scrolling down
-                if (currentIndex < buttons.length - 1) {
-                    nextIndex = currentIndex + 1;
-                }
-            } else { // Scrolling up
-                if (currentIndex > 0) {
-                    nextIndex = currentIndex - 1;
-                }
+            if (e.deltaY > 0) {
+                if (currentIndex < buttons.length - 1) nextIndex = currentIndex + 1;
+            } else {
+                if (currentIndex > 0) nextIndex = currentIndex - 1;
             }
-
-            if (nextIndex !== currentIndex) {
-                buttons[nextIndex].click();
-            }
+            if (nextIndex !== currentIndex) buttons[nextIndex].click();
         });
     }
 }

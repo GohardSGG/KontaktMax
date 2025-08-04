@@ -10,6 +10,7 @@
   --text-secondary: #a0aec0;
   --text-muted: #718096;
   --accent-blue: #667eea;
+  --scrollbar-width: 3.6px; 
   --neumorphism-raised: 
     3px 3px 6px var(--shadow-dark),
     -3px -3px 6px var(--shadow-light);
@@ -114,6 +115,8 @@ body {
   border-radius: 6px;
   padding: 1rem;
   box-shadow: var(--neumorphism-raised);
+  display: flex; 
+  flex-direction: column;
 }
 
 .side-panel {
@@ -121,13 +124,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-width: 0; /* CRITICAL FIX for preventing flexbox overflow */
+  min-width: 0;
 }
 
 .manage-panel {
   background: var(--bg-secondary);
   border-radius: 6px;
-  padding: 1rem;
+  padding: 0.8rem;
   box-shadow: var(--neumorphism-raised);
 }
 
@@ -162,35 +165,62 @@ body {
 }
 
 
-/* ===================== Library Table Styles ===================== */
+/* ===================== Library Table (Final & Stable Pure CSS Layout) ===================== */
 
 .table-container {
     width: 100%;
     height: 100%;
-    overflow-y: auto;
     border-radius: 6px;
     background: var(--bg-primary);
     box-shadow: var(--neumorphism-pressed);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Main container does not scroll */
 }
 
 #library-table {
     width: 100%;
     border-collapse: collapse;
     color: var(--text-primary);
+    display: flex; /* Use flexbox to separate header and body */
+    flex-direction: column;
+    height: 100%;
+}
+
+#library-table thead, #library-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed; /* Ensures header and body columns align perfectly */
+}
+
+#library-table thead {
+    flex-shrink: 0; /* Header should not shrink */
+    background-color: var(--bg-secondary);
+}
+
+#library-table tbody {
+    display: block; /* Makes the body a scrollable block */
+    overflow-y: auto; /* The body is the only part that scrolls vertically */
+    flex-grow: 1; /* Body takes up all available space */
 }
 
 #library-table th, #library-table td {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid var(--bg-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
+/* Define column widths */
+#library-table th:nth-child(1), #library-table td:nth-child(1) { width: 60%; }
+#library-table th:nth-child(2), #library-table td:nth-child(2) { width: 20%; }
+#library-table th:nth-child(3), #library-table td:nth-child(3) { width: 20%; }
+
+
 #library-table thead th {
-    background-color: var(--bg-secondary);
     font-weight: 600;
-    position: sticky;
-    top: 0;
-    z-index: 1;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
@@ -219,7 +249,6 @@ body {
     border-top: 5px solid var(--text-primary);
 }
 
-
 #library-table tbody tr {
     transition: background-color 0.2s ease;
 }
@@ -232,7 +261,6 @@ body {
     background-color: var(--accent-blue);
     color: white;
 }
-
 
 #library-table tbody tr:last-child td {
     border-bottom: none;
@@ -267,7 +295,7 @@ body {
     border-radius: 6px;
     padding: 0.8rem;
     box-shadow: var(--neumorphism-raised);
-    overflow: hidden; /* Prevent content from overflowing */
+    overflow: hidden;
 }
 
 .info-panel-body {
@@ -285,7 +313,7 @@ body {
     font-weight: bold;
     margin-bottom: 0.8rem;
     color: var(--text-primary);
-    min-height: 1em; /* Reserve space to prevent layout shift */
+    min-height: 1em;
     flex-shrink: 0;
 }
 
@@ -293,24 +321,24 @@ body {
     display: flex;
     flex-direction: column;
     border-left: 1px solid var(--bg-tertiary);
-    flex-shrink: 0; /* Prevent the nav from shrinking */
-    width: 36px; /* Further reduced width */
+    flex-shrink: 0;
+    width: 36px;
     background-color: var(--bg-tertiary);
     border-radius: 6px;
     margin-left: 0.2rem;
-    margin-right: -0.5rem;
-    margin-top: -0.6rem;
-    margin-bottom: -0.6rem;
+    margin-right: -0.8rem;
+    margin-top: -1rem;
+    margin-bottom: -1rem;
 }
 
 .tab-btn {
-    padding: 0.8rem 0rem; /* Reduced padding */
+    padding: 0.8rem 0rem;
     cursor: pointer;
     background: none;
     border: none;
     color: var(--text-secondary);
     font-weight: 500;
-    font-size: 0.9rem; /* Custom font size for tab buttons */
+    font-size: 0.9rem;
     text-align: center;
     border-right: 3px solid transparent;
     transition: all 0.2s ease;
@@ -324,12 +352,12 @@ body {
 .tab-btn.active {
     background-color: var(--accent-blue);
     color: var(--text-primary);
-    border-right-color: transparent; /* Ensure border is not shown when active */
+    border-right-color: transparent;
 }
 
 .tab-content {
     flex-grow: 1;
-    overflow: auto; /* Use auto for both vertical and horizontal scroll */
+    overflow: auto;
 }
 
 .tab-pane {
@@ -363,11 +391,35 @@ body {
 #tab-registration td {
     padding: 10px 5px;
     border-bottom: 1px solid var(--bg-tertiary);
-    white-space: nowrap; /* Prevent line breaks */
+    white-space: nowrap;
 }
 
 #tab-registration tr:last-child td {
     border-bottom: none;
 }
 
+/* ===================== Custom Scrollbar Styles ===================== */
 
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #8E7CFF, #E182F7);
+  border-radius: 2px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #a192ff, #e99ef9);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
