@@ -250,3 +250,37 @@ h2 {
 #library-table tbody tr:last-child td {
     border-bottom: none;
 }
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.status-indicator.green {
+    background-color: #48bb78; /* A nice green color */
+    box-shadow: 0 0 5px #48bb78;
+}
+
+.status-indicator.red {
+    background-color: #f56565; /* A nice red color */
+    box-shadow: 0 0 5px #f56565;
+}
+
+#library-table tbody tr.selected {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+#info-details p {
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+}
+
+#info-details strong {
+    color: var(--text-primary);
+}
+

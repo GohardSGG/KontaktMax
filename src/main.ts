@@ -4,6 +4,12 @@ import { invoke } from '@tauri-apps/api/core';
 interface LibraryInfo {
     name: string;
     library_type: string;
+    registration_status: string;
+}
+
+interface LibraryDetails {
+    name: string;
+    paths: string[];
 }
 
 interface LibraryQueryResult {
@@ -16,8 +22,8 @@ interface LibraryQueryResult {
 // --- Global State for Sorting ---
 let currentLibraries: LibraryInfo[] = [];
 let sortState = {
-    column: 'name', // Default sort column
-    order: 'asc'    // Default sort order
+    column: 'name',
+    order: 'asc'
 };
 
 function updateSortVisuals() {
@@ -31,28 +37,62 @@ function updateSortVisuals() {
     }
 }
 
+async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
+    // Highlight clicked row
+    document.querySelectorAll('#library-table tbody tr').forEach(r => r.classList.remove('selected'));
+    row.classList.add('selected');
+
+    const infoDetails = document.getElementById('info-details');
+    if (!infoDetails) return;
+
+    infoDetails.innerHTML = '<p>正在加载详细信息...</p>';
+
+    try {
+        const details = await invoke<LibraryDetails>('get_library_details', { name: lib.name });
+        
+        infoDetails.innerHTML = `<strong>${details.name}</strong>`;
+        if (details.paths.length > 0) {
+            details.paths.forEach(path => {
+                const p = document.createElement('p');
+                p.textContent = path;
+                infoDetails.appendChild(p);
+            });
+        } else {
+            const p = document.createElement('p');
+            p.textContent = '在任何位置都未找到该库的注册信息。';
+            infoDetails.appendChild(p);
+        }
+
+    } catch (error) {
+        infoDetails.innerHTML = '<p style="color: red;">获取详细信息失败。</p>';
+        console.error("Failed to get library details:", error);
+    }
+}
+
 function sortAndRender() {
-    // Sort the libraries based on the current sort state
     currentLibraries.sort((a, b) => {
         const valA = a[sortState.column as keyof LibraryInfo].toLowerCase();
         const valB = b[sortState.column as keyof LibraryInfo].toLowerCase();
-
-        let comparison = valA.localeCompare(valB, 'en'); // Use localeCompare for better string sorting
-        
+        let comparison = valA.localeCompare(valB, 'en');
         return sortState.order === 'asc' ? comparison : -comparison;
     });
 
-    // --- Render Table ---
     const tableBody = document.querySelector<HTMLTableSectionElement>('#library-table tbody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = ''; // Clear existing rows
+    tableBody.innerHTML = ''; 
     currentLibraries.forEach(lib => {
         const row = tableBody.insertRow();
-        const nameCell = row.insertCell(0);
-        nameCell.textContent = lib.name;
-        const typeCell = row.insertCell(1);
-        typeCell.textContent = lib.library_type;
+        row.addEventListener('click', () => handleRowClick(row, lib));
+
+        row.insertCell(0).textContent = lib.name;
+        row.insertCell(1).textContent = lib.library_type;
+
+        const statusCell = row.insertCell(2);
+        const statusIndicator = document.createElement('span');
+        statusIndicator.className = `status-indicator ${lib.registration_status === '3/3' ? 'green' : 'red'}`;
+        statusCell.textContent = lib.registration_status;
+        statusCell.appendChild(statusIndicator);
     });
 
     updateSortVisuals();
@@ -62,15 +102,13 @@ async function loadLibraries() {
     try {
         const result = await invoke<LibraryQueryResult>('get_installed_libraries');
         
-        currentLibraries = result.libraries; // Store the original data
-        sortAndRender(); // Sort and render for the first time
+        currentLibraries = result.libraries; 
+        sortAndRender(); 
 
-        // --- Render Summary ---
         const summaryElement = document.getElementById('library-summary');
         if (summaryElement) {
             summaryElement.textContent = `共${result.total_count}个音色库 | ${result.standard_count}个标准库 | ${result.custom_count}个自定义库`;
         }
-
     } catch (error) {
         console.error('Failed to load libraries:', error);
         const summaryElement = document.getElementById('library-summary');
@@ -81,7 +119,6 @@ async function loadLibraries() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // --- Window Controls ---
   const closeBtn = document.getElementById('close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => WebviewWindow.getCurrent().hide());
@@ -92,7 +129,6 @@ window.addEventListener('DOMContentLoaded', () => {
     settingsBtn.addEventListener('click', () => console.log('Settings button clicked'));
   }
 
-  // --- Sorting Event Listeners ---
   document.querySelectorAll<HTMLTableCellElement>('#library-table thead th').forEach(header => {
       header.addEventListener('click', () => {
           const sortBy = header.dataset.sortBy;
@@ -108,6 +144,5 @@ window.addEventListener('DOMContentLoaded', () => {
       });
   });
   
-  // --- Initial Load ---
   loadLibraries();
 });

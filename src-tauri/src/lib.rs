@@ -1,10 +1,25 @@
-// This is the core logic for our window and tray, precisely adapted from OSC-Bridge.
+// This is the core logic for our window and tray.
 use tauri::{AppHandle, Manager, State, WindowEvent};
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use auto_launch::AutoLaunch;
 use winreg::enums::*;
 use winreg::RegKey;
+use std::collections::HashSet;
+use once_cell::sync::Lazy;
+
+// --- Blacklist Definition & Loader ---
+
+#[derive(serde::Deserialize)]
+struct Blacklist {
+    key_names: Vec<String>,
+    value_names: Vec<String>,
+}
+
+static BLACKLIST: Lazy<Blacklist> = Lazy::new(|| {
+    let blacklist_str = include_str!("../blacklist.json");
+    serde_json::from_str(blacklist_str).expect("Failed to parse blacklist.json")
+});
 
 // --- Data Structures ---
 
@@ -16,10 +31,7 @@ struct AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self {
-            auto_start: false,
-            silent_start: false,
-        }
+        Self { auto_start: false, silent_start: false }
     }
 }
 
@@ -27,6 +39,13 @@ impl Default for AppConfig {
 struct LibraryInfo {
     name: String,
     library_type: String, 
+    registration_status: String,
+}
+
+#[derive(serde::Serialize, Default)]
+struct LibraryDetails {
+    name: String,
+    paths: Vec<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -42,39 +61,96 @@ struct AppState {
     auto_launch: Mutex<Option<AutoLaunch>>,
 }
 
-// --- Tauri Commands (callable from frontend) ---
+// --- Tauri Commands ---
+
+#[tauri::command]
+fn get_library_details(name: String) -> Result<LibraryDetails, String> {
+    let mut details = LibraryDetails { name: name.clone(), ..Default::default() };
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+
+    let paths_to_check = [
+        ("HKLM\\SOFTWARE\\WOW6432Node\\Native Instruments", hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments").ok()),
+        ("HKLM\\SOFTWARE\\Native Instruments", hklm.open_subkey("SOFTWARE\\Native Instruments").ok()),
+        ("HKCU\\SOFTWARE\\Native Instruments", hkcu.open_subkey("SOFTWARE\\Native Instruments").ok()),
+    ];
+
+    for (path_prefix, key_option) in paths_to_check.iter() {
+        if let Some(key) = key_option {
+            if key.open_subkey(&name).is_ok() {
+                details.paths.push(format!("{}\\{}", path_prefix, name));
+            }
+        }
+    }
+    
+    Ok(details)
+}
 
 #[tauri::command]
 fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
     let mut libraries = Vec::new();
     let mut standard_count = 0;
     let mut custom_count = 0;
+    let mut library_names = HashSet::new();
 
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     
-    // According to the new log analysis, the primary index is in HKLM\...\Content
-    let content_key_path = "SOFTWARE\\WOW6432Node\\Native Instruments\\Content";
-    let content_key = hklm.open_subkey(content_key_path)
-        .map_err(|e| format!("Failed to open HKLM Content key: {}", e))?;
+    // --- Discovery Phase: Hybrid Mode ---
 
-    let ni_key_hklm_base = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments")
-        .map_err(|e| format!("Failed to open HKLM NI base key: {}", e))?;
-
-    // Enumerate VALUES, not keys, as per the new report. The value data is the library name.
-    for (_, value) in content_key.enum_values().filter_map(Result::ok) {
-        let library_name: String = value.to_string();
-
-        // **FIX**: Exclude the "UserPatches" entry as observed in other tools.
-        if library_name == "UserPatches" {
-            continue;
+    // 1. Primary Source: The Content Index (most reliable)
+    if let Ok(content_key) = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments\\Content") {
+        for (_, value) in content_key.enum_values().filter_map(Result::ok) {
+            let library_name: String = value.to_string();
+            if !BLACKLIST.key_names.contains(&library_name) {
+                library_names.insert(library_name);
+            }
         }
+    }
+
+    // 2. Supplementary Source: Comprehensive Census (to find orphans)
+    let paths_to_scan = [
+        hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments").ok(),
+        hklm.open_subkey("SOFTWARE\\Native Instruments").ok(),
+        hkcu.open_subkey("SOFTWARE\\Native Instruments").ok(),
+    ];
+
+    for path in paths_to_scan.iter().flatten() {
+        for key_name_result in path.enum_keys() {
+            if let Ok(key_name) = key_name_result {
+                if BLACKLIST.key_names.contains(&key_name) { continue; }
+                if let Ok(subkey) = path.open_subkey(&key_name) {
+                    let is_plugin = BLACKLIST.value_names.iter().any(|val_name| subkey.get_value::<String, _>(val_name).is_ok());
+                    if !is_plugin {
+                        library_names.insert(key_name);
+                    }
+                }
+            }
+        }
+    }
+    
+    // --- Verification and Health Check Stage ---
+    let ni_key_hklm_wow64 = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments")
+        .map_err(|e| format!("Failed to open HKLM WOW64 NI key: {}", e))?;
+    let ni_key_hklm_native = hklm.open_subkey("SOFTWARE\\Native Instruments").ok();
+    let ni_key_hkcu = hkcu.open_subkey("SOFTWARE\\Native Instruments")
+        .map_err(|e| format!("Failed to open HKCU NI key: {}", e))?;
+
+    for library_name in library_names {
+        // Health Check
+        let mut status_count = 0;
+        if ni_key_hklm_wow64.open_subkey(&library_name).is_ok() { status_count += 1; }
+        if let Some(key) = &ni_key_hklm_native {
+            if key.open_subkey(&library_name).is_ok() { status_count += 1; }
+        }
+        if ni_key_hkcu.open_subkey(&library_name).is_ok() { status_count += 1; }
+        let registration_status = format!("{}/3", status_count);
         
-        // Now, verify the type by checking for HU/JDX in HKLM\...\<Library Name>
-        let library_type = match ni_key_hklm_base.open_subkey(&library_name) {
+        // Classify Library Type (based on the most authoritative location)
+        let library_type = match ni_key_hklm_wow64.open_subkey(&library_name) {
             Ok(library_key_hklm) => {
                 let has_hu = library_key_hklm.get_value::<String, _>("HU").is_ok();
                 let has_jdx = library_key_hklm.get_value::<String, _>("JDX").is_ok();
-
                 if has_hu && has_jdx {
                     standard_count += 1;
                     "标准音色库".to_string()
@@ -84,7 +160,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
                 }
             }
             Err(_) => {
-                // If the specific library key doesn't exist under NI in HKLM, it's custom.
                 custom_count += 1;
                 "自定义音色库".to_string()
             }
@@ -93,6 +168,7 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         libraries.push(LibraryInfo {
             name: library_name,
             library_type,
+            registration_status,
         });
     }
 
@@ -104,6 +180,7 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
     })
 }
 
+// ... (rest of the file is unchanged)
 
 #[tauri::command]
 fn get_config(state: State<AppState>) -> Result<AppConfig, String> {
@@ -162,8 +239,6 @@ fn save_config(app: AppHandle, state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
-// --- Utility Functions ---
-
 fn load_app_config(app: &AppHandle) -> AppConfig {
     if let Ok(app_dir) = app.path().app_config_dir() {
         let config_path = app_dir.join("config.json");
@@ -178,42 +253,29 @@ fn load_app_config(app: &AppHandle) -> AppConfig {
 
 fn update_tray_menu(app: &AppHandle) {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-    
     let app_state = app.state::<AppState>();
     let config = app_state.app_config.lock().unwrap();
-    
     let auto_start_text = if config.auto_start { "✓ 开机自启" } else { "开机自启" };
     let silent_start_text = if config.silent_start { "✓ 静默启动" } else { "静默启动" };
-
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>).unwrap();
     let show_item = MenuItem::with_id(app, "show", "显示/隐藏", true, None::<&str>).unwrap();
     let auto_start_item = MenuItem::with_id(app, "auto_start", auto_start_text, true, None::<&str>).unwrap();
     let silent_start_item = MenuItem::with_id(app, "silent_start", silent_start_text, true, None::<&str>).unwrap();
     let separator = PredefinedMenuItem::separator(app).unwrap();
-
     let menu = Menu::with_items(app, &[&show_item, &separator, &auto_start_item, &silent_start_item, &separator, &quit_item]).unwrap();
     if let Some(tray) = app.tray_by_id("main-tray") {
         let _ = tray.set_menu(Some(menu));
     }
 }
 
-// --- Main Application Entry Point ---
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use tauri::{tray::TrayIconBuilder, menu::Menu};
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init()) // Keep essential plugins
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
-            
-            // The blur effect is disabled as per user request.
-            // #[cfg(target_os = "windows")]
-            // {
-            //     use window_vibrancy::apply_blur;
-            //     apply_blur(&window, Some((0, 0, 0, 0))).expect("Unsupported platform!");
-            // }
             
             let app_config = load_app_config(&app.handle());
             let args = if app_config.silent_start { vec!["--silent"] } else { vec![] };
@@ -228,8 +290,7 @@ pub fn run() {
                 window.hide().unwrap();
             }
 
-            // --- Tray Icon & Menu ---
-            let menu = Menu::new(app)?; // Create an empty menu to be populated later
+            let menu = Menu::new(app)?;
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
@@ -269,16 +330,14 @@ pub fn run() {
                 })
                 .build(app)?;
             
-            update_tray_menu(&app.handle()); // Initial population of the menu
-            // Finally, show the window to prevent the startup glitch
+            update_tray_menu(&app.handle());
             window.show().unwrap();
-
             Ok(())
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap();
-                api.prevent_close(); // This is the key
+                api.prevent_close();
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -286,7 +345,8 @@ pub fn run() {
             set_auto_start,
             set_silent_start,
             save_config,
-            get_installed_libraries
+            get_installed_libraries,
+            get_library_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

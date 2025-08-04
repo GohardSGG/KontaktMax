@@ -1,0 +1,12 @@
+{
+  "key_names": [
+    "ALSupport",
+    "UserPatches"
+  ],
+  "value_names": [
+    "InstallVST2_64Dir",
+    "InstallVST64Dir",
+    "uret-configuration",
+    "uret-init"  
+  ]
+}
