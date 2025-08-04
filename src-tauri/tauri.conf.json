@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "KontaktMax",
-        "width": 1000,
-        "height": 600,
+        "width": 1399,
+        "height": 650,
         "decorations": false,
         "transparent": true,
         "shadow": false,

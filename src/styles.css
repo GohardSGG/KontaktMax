@@ -10,7 +10,7 @@
   --text-secondary: #a0aec0;
   --text-muted: #718096;
   --accent-blue: #667eea;
-  --scrollbar-width: 3.6px; 
+  --scrollbar-width: 6px; /* A more robust width for the scrollbar */
   --neumorphism-raised: 
     3px 3px 6px var(--shadow-dark),
     -3px -3px 6px var(--shadow-light);
@@ -99,7 +99,7 @@ body {
   background-color: var(--bg-tertiary);
 }
 
-/* ===================== Main Content ===================== */
+/* ===================== Main Content (Final Layout) ===================== */
 
 .main-content {
   flex-grow: 1;
@@ -110,7 +110,8 @@ body {
 }
 
 .sheet-panel {
-  flex: 618;
+  flex: 1; 
+  min-width: 0; 
   background: var(--bg-secondary);
   border-radius: 6px;
   padding: 1rem;
@@ -120,11 +121,10 @@ body {
 }
 
 .side-panel {
-  flex: 382;
+  flex: 0 0 380px; 
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-width: 0;
 }
 
 .manage-panel {
@@ -165,7 +165,7 @@ body {
 }
 
 
-/* ===================== Library Table (Final & Stable Pure CSS Layout) ===================== */
+/* ===================== Library Table (CSS Grid Implementation) ===================== */
 
 .table-container {
     width: 100%;
@@ -173,64 +173,66 @@ body {
     border-radius: 6px;
     background: var(--bg-primary);
     box-shadow: var(--neumorphism-pressed);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Main container does not scroll */
+    display: grid;
+    grid-template-rows: auto 1fr; /* Header: content height, Body: remaining space */
+    overflow: hidden; /* Hide any accidental overflow */
 }
 
-#library-table {
+.table-header-wrapper, .table-body-wrapper {
+    overflow-x: auto;
+}
+
+.table-header-wrapper {
+    overflow-y: hidden; 
+}
+
+.table-body-wrapper {
+    overflow-y: scroll;
+}
+
+.table-header-wrapper::-webkit-scrollbar { display: none; }
+.table-body-wrapper::-webkit-scrollbar-track:horizontal { background-color: transparent; }
+.table-body-wrapper::-webkit-scrollbar-thumb:horizontal { background-color: var(--accent-blue); border-radius: 4px; }
+.table-body-wrapper::-webkit-scrollbar:horizontal { height: 3.6px; }
+
+#header-table, #body-table {
     width: 100%;
+    min-width: 650px;
     border-collapse: collapse;
     color: var(--text-primary);
-    display: flex; /* Use flexbox to separate header and body */
-    flex-direction: column;
-    height: 100%;
+    table-layout: fixed;
 }
 
-#library-table thead, #library-table tbody tr {
-    display: table;
-    width: 100%;
-    table-layout: fixed; /* Ensures header and body columns align perfectly */
-}
-
-#library-table thead {
-    flex-shrink: 0; /* Header should not shrink */
-    background-color: var(--bg-secondary);
-}
-
-#library-table tbody {
-    display: block; /* Makes the body a scrollable block */
-    overflow-y: auto; /* The body is the only part that scrolls vertically */
-    flex-grow: 1; /* Body takes up all available space */
-}
-
-#library-table th, #library-table td {
+#header-table th, #body-table td {
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid var(--bg-tertiary);
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* Define column widths */
-#library-table th:nth-child(1), #library-table td:nth-child(1) { width: 60%; }
-#library-table th:nth-child(2), #library-table td:nth-child(2) { width: 20%; }
-#library-table th:nth-child(3), #library-table td:nth-child(3) { width: 20%; }
+#body-table td {
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+/* Column Widths - MUST be identical for both tables */
+#header-table th:nth-child(1), #body-table td:nth-child(1) { width: 350px; }
+#header-table th:nth-child(2), #body-table td:nth-child(2) { width: 180px; }
+#header-table th:nth-child(3), #body-table td:nth-child(3) { width: 120px; }
 
 
-#library-table thead th {
+#header-table th {
+    background-color: var(--bg-secondary);
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    border-bottom: 1px solid var(--bg-tertiary);
 }
 
-#library-table thead th:hover {
+#header-table th:hover {
     background-color: var(--bg-tertiary);
 }
 
-#library-table thead th.sort-asc::after,
-#library-table thead th.sort-desc::after {
+#header-table th.sort-asc::after,
+#header-table th.sort-desc::after {
     content: '';
     display: inline-block;
     width: 0;
@@ -241,28 +243,28 @@ body {
     vertical-align: middle;
 }
 
-#library-table thead th.sort-asc::after {
+#header-table th.sort-asc::after {
     border-bottom: 5px solid var(--text-primary);
 }
 
-#library-table thead th.sort-desc::after {
+#header-table th.sort-desc::after {
     border-top: 5px solid var(--text-primary);
 }
 
-#library-table tbody tr {
+#body-table tbody tr {
     transition: background-color 0.2s ease;
 }
 
-#library-table tbody tr:hover {
+#body-table tbody tr:hover {
     background-color: var(--bg-tertiary);
 }
 
-#library-table tbody tr.selected {
+#body-table tbody tr.selected {
     background-color: var(--accent-blue);
     color: white;
 }
 
-#library-table tbody tr:last-child td {
+#body-table tbody tr:last-child td {
     border-bottom: none;
 }
 
@@ -357,15 +359,15 @@ body {
 
 .tab-content {
     flex-grow: 1;
-    overflow: auto;
+    overflow: auto; /* Enable scrolling on the content area */
 }
 
 .tab-pane {
-    display: none;
+    display: none; /* CRITICAL: Hide all panes by default */
 }
 
 .tab-pane.active {
-    display: block;
+    display: block; /* ONLY show the active one */
 }
 
 #info-placeholder {
@@ -386,12 +388,13 @@ body {
 #tab-registration table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed; 
 }
 
 #tab-registration td {
     padding: 10px 5px;
     border-bottom: 1px solid var(--bg-tertiary);
-    white-space: nowrap;
+    white-space: nowrap; /* Allow content to overflow */
 }
 
 #tab-registration tr:last-child td {
@@ -402,7 +405,7 @@ body {
 
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
-  height: 3px;
+  height: 3.6px; /* Give horizontal scrollbar some height */
 }
 
 ::-webkit-scrollbar-track {

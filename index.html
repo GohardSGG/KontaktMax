@@ -24,18 +24,24 @@
         <div class="main-content">
             <div class="sheet-panel">
                 <div class="table-container">
-                    <table id="library-table">
-                        <thead>
-                            <tr>
-                                <th data-sort-by="name">音源库名称</th>
-                                <th data-sort-by="library_type">类型</th>
-                                <th data-sort-by="registration_status">注册状态</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Library rows will be inserted here by JavaScript -->
-                        </tbody>
-                    </table>
+                    <div class="table-header-wrapper">
+                        <table id="header-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort-by="name">音源库名称</th>
+                                    <th data-sort-by="library_type">类型</th>
+                                    <th data-sort-by="registration_status">注册状态</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="table-body-wrapper">
+                        <table id="body-table">
+                            <tbody>
+                                <!-- Library rows will be inserted here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div class="side-panel">

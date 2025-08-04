@@ -26,45 +26,44 @@ let currentLibraries: LibraryInfo[] = [];
 let sortState = { column: 'name', order: 'asc' };
 
 // --- DOM Elements ---
-let tableBody: HTMLTableSectionElement | null;
+let headerTable: HTMLTableElement | null;
+let bodyTableBody: HTMLTableSectionElement | null;
 let summaryElement: HTMLElement | null;
 let infoHeader: HTMLElement | null;
 let infoPlaceholder: HTMLElement | null;
 let tabNav: HTMLElement | null;
 let tabContent: HTMLElement | null;
+let headerWrapper: HTMLElement | null;
+let bodyWrapper: HTMLElement | null;
 
 function initializeDOMElements() {
-    // The query now targets the tbody directly, as it's the only part we dynamically fill.
-    tableBody = document.querySelector('#library-table tbody');
+    headerTable = document.getElementById('header-table') as HTMLTableElement;
+    bodyTableBody = document.querySelector('#body-table tbody');
     summaryElement = document.getElementById('library-summary');
     infoHeader = document.getElementById('info-header');
     infoPlaceholder = document.getElementById('info-placeholder');
     tabNav = document.querySelector('.tab-nav');
     tabContent = document.querySelector('.tab-content');
+    headerWrapper = document.querySelector('.table-header-wrapper');
+    bodyWrapper = document.querySelector('.table-body-wrapper');
 }
 
 function updateSortVisuals() {
-    document.querySelectorAll('#library-table thead th').forEach(th => {
+    document.querySelectorAll('#header-table thead th').forEach(th => {
         th.classList.remove('sort-asc', 'sort-desc');
     });
-    const header = document.querySelector<HTMLTableCellElement>(`#library-table thead th[data-sort-by="${sortState.column}"]`);
+    const header = document.querySelector<HTMLTableCellElement>(`#header-table thead th[data-sort-by="${sortState.column}"]`);
     if (header) {
         header.classList.add(sortState.order === 'asc' ? 'sort-asc' : 'sort-desc');
     }
 }
 
 async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
-    // Clear previous selection
-    const selectedRow = tableBody?.querySelector('tr.selected');
-    if (selectedRow) {
-        selectedRow.classList.remove('selected');
-    }
-    // Add selection to the new row
+    document.querySelectorAll('#body-table tbody tr').forEach(r => r.classList.remove('selected'));
     row.classList.add('selected');
 
     if (!infoHeader || !tabContent || !infoPlaceholder) return;
 
-    // Show info panel, hide placeholder
     infoPlaceholder.style.display = 'none';
     infoHeader.style.display = 'block';
     if (tabNav) {
@@ -72,7 +71,6 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
     }
     tabContent.style.display = 'block';
 
-    // Set header and show loading state
     infoHeader.textContent = lib.name;
     document.querySelectorAll('.tab-pane').forEach(pane => {
         (pane as HTMLElement).innerHTML = '<p>正在加载...</p>';
@@ -81,10 +79,9 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
     try {
         const details = await invoke<LibraryDetails>('get_library_details', { name: lib.name });
         
-        // Render Overview Tab
         const overviewTab = document.getElementById('tab-overview');
         if (overviewTab) {
-            overviewTab.innerHTML = ''; // Clear loading
+            overviewTab.innerHTML = ''; 
             if (details.content_dir) {
                 const p = document.createElement('p');
                 p.textContent = '文件目录: ';
@@ -102,10 +99,9 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
             }
         }
 
-        // Render Registration Tab
         const registrationTab = document.getElementById('tab-registration');
         if (registrationTab) {
-            registrationTab.innerHTML = ''; // Clear loading
+            registrationTab.innerHTML = '';
             if (details.paths.length > 0) {
                 const table = document.createElement('table');
                 details.paths.forEach(path => {
@@ -134,10 +130,10 @@ function sortAndRender() {
         return sortState.order === 'asc' ? comparison : -comparison;
     });
 
-    if (!tableBody) return;
-    tableBody.innerHTML = ''; 
+    if (!bodyTableBody) return;
+    bodyTableBody.innerHTML = ''; 
     currentLibraries.forEach(lib => {
-        const row = tableBody.insertRow();
+        const row = bodyTableBody.insertRow();
         row.addEventListener('click', () => handleRowClick(row, lib));
         
         row.insertCell(0).textContent = lib.name;
@@ -218,7 +214,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settings-btn');
   if (settingsBtn) settingsBtn.addEventListener('click', () => console.log('Settings button clicked'));
 
-  document.querySelectorAll<HTMLTableCellElement>('#library-table thead th').forEach(header => {
+  document.querySelectorAll<HTMLTableCellElement>('#header-table thead th').forEach(header => {
       header.addEventListener('click', () => {
           const sortBy = header.dataset.sortBy;
           if (!sortBy) return;
@@ -234,4 +230,14 @@ window.addEventListener('DOMContentLoaded', () => {
   
   setupTabListeners();
   loadLibraries();
+
+  // --- Scroll Synchronization Logic ---
+  if (headerWrapper && bodyWrapper) {
+      headerWrapper.addEventListener('scroll', () => {
+          bodyWrapper.scrollLeft = headerWrapper.scrollLeft;
+      });
+      bodyWrapper.addEventListener('scroll', () => {
+          headerWrapper.scrollLeft = bodyWrapper.scrollLeft;
+      });
+  }
 });
