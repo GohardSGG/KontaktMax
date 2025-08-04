@@ -1,7 +1,9 @@
 {
   "key_names": [
     "ALSupport",
-    "UserPatches"
+    "UserPatches",
+    "Controller Settings",
+    "NIHostIntegrationAgent"
   ],
   "value_names": [
     "InstallVST2_64Dir",

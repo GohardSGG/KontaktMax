@@ -46,6 +46,7 @@ struct LibraryInfo {
 struct LibraryDetails {
     name: String,
     paths: Vec<String>,
+    content_dir: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -65,26 +66,47 @@ struct AppState {
 
 #[tauri::command]
 fn get_library_details(name: String) -> Result<LibraryDetails, String> {
-    let mut details = LibraryDetails { name: name.clone(), ..Default::default() };
+    let mut details = LibraryDetails {
+        name: name.clone(),
+        ..Default::default()
+    };
+    
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
 
-    let paths_to_check = [
-        ("HKLM\\SOFTWARE\\WOW6432Node\\Native Instruments", hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments").ok()),
-        ("HKLM\\SOFTWARE\\Native Instruments", hklm.open_subkey("SOFTWARE\\Native Instruments").ok()),
-        ("HKCU\\SOFTWARE\\Native Instruments", hkcu.open_subkey("SOFTWARE\\Native Instruments").ok()),
-    ];
+    let hklm_wow64_base = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments").ok();
+    let hklm_native_base = hklm.open_subkey("SOFTWARE\\Native Instruments").ok();
+    let hkcu_base = hkcu.open_subkey("SOFTWARE\\Native Instruments").ok();
 
-    for (path_prefix, key_option) in paths_to_check.iter() {
-        if let Some(key) = key_option {
-            if key.open_subkey(&name).is_ok() {
-                details.paths.push(format!("{}\\{}", path_prefix, name));
+    // Check for registration paths
+    if let Some(key) = &hklm_wow64_base {
+        if key.open_subkey(&name).is_ok() {
+            details.paths.push(format!("HKLM\\SOFTWARE\\WOW6432Node\\Native Instruments\\{}", name));
+        }
+    }
+    if let Some(key) = &hklm_native_base {
+        if key.open_subkey(&name).is_ok() {
+            details.paths.push(format!("HKLM\\SOFTWARE\\Native Instruments\\{}", name));
+        }
+    }
+    if let Some(key) = &hkcu_base {
+        if key.open_subkey(&name).is_ok() {
+            details.paths.push(format!("HKCU\\SOFTWARE\\Native Instruments\\{}", name));
+        }
+    }
+
+    // Get ContentDir, prioritizing HKLM WOW64
+    if let Some(key) = &hklm_wow64_base {
+        if let Ok(subkey) = key.open_subkey(&name) {
+            if let Ok(path) = subkey.get_value("ContentDir") {
+                details.content_dir = Some(path);
             }
         }
     }
     
     Ok(details)
 }
+
 
 #[tauri::command]
 fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
@@ -96,9 +118,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     
-    // --- Discovery Phase: Hybrid Mode ---
-
-    // 1. Primary Source: The Content Index (most reliable)
     if let Ok(content_key) = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments\\Content") {
         for (_, value) in content_key.enum_values().filter_map(Result::ok) {
             let library_name: String = value.to_string();
@@ -108,7 +127,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         }
     }
 
-    // 2. Supplementary Source: Comprehensive Census (to find orphans)
     let paths_to_scan = [
         hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments").ok(),
         hklm.open_subkey("SOFTWARE\\Native Instruments").ok(),
@@ -121,7 +139,9 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
                 if BLACKLIST.key_names.contains(&key_name) { continue; }
                 if let Ok(subkey) = path.open_subkey(&key_name) {
                     let is_plugin = BLACKLIST.value_names.iter().any(|val_name| subkey.get_value::<String, _>(val_name).is_ok());
-                    if !is_plugin {
+                    let has_valid_content_dir = subkey.get_value::<String, _>("ContentDir").is_ok_and(|s: String| !s.is_empty());
+                    
+                    if !is_plugin && has_valid_content_dir {
                         library_names.insert(key_name);
                     }
                 }
@@ -129,7 +149,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         }
     }
     
-    // --- Verification and Health Check Stage ---
     let ni_key_hklm_wow64 = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments")
         .map_err(|e| format!("Failed to open HKLM WOW64 NI key: {}", e))?;
     let ni_key_hklm_native = hklm.open_subkey("SOFTWARE\\Native Instruments").ok();
@@ -137,7 +156,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         .map_err(|e| format!("Failed to open HKCU NI key: {}", e))?;
 
     for library_name in library_names {
-        // Health Check
         let mut status_count = 0;
         if ni_key_hklm_wow64.open_subkey(&library_name).is_ok() { status_count += 1; }
         if let Some(key) = &ni_key_hklm_native {
@@ -146,7 +164,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         if ni_key_hkcu.open_subkey(&library_name).is_ok() { status_count += 1; }
         let registration_status = format!("{}/3", status_count);
         
-        // Classify Library Type (based on the most authoritative location)
         let library_type = match ni_key_hklm_wow64.open_subkey(&library_name) {
             Ok(library_key_hklm) => {
                 let has_hu = library_key_hklm.get_value::<String, _>("HU").is_ok();
@@ -179,8 +196,6 @@ fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
         custom_count,
     })
 }
-
-// ... (rest of the file is unchanged)
 
 #[tauri::command]
 fn get_config(state: State<AppState>) -> Result<AppConfig, String> {

@@ -40,7 +40,6 @@
             </div>
             <div class="side-panel">
                 <div class="manage-panel">
-                    <!-- Add/Remove buttons -->
                     <h2>Manage</h2>
                     <div class="manage-buttons">
                         <button class="btn">Add Library</button>
@@ -48,9 +47,21 @@
                     </div>
                 </div>
                 <div class="info-panel">
-                    <h2>Info</h2>
-                    <div id="info-details" class="info-content">
+                    <div id="info-header"></div>
+                    <div id="info-placeholder">
                         <p>Select a library to see details.</p>
+                    </div>
+                    <div class="info-panel-body">
+                        <div class="tab-content">
+                            <div id="tab-overview" class="tab-pane active"></div>
+                            <div id="tab-registration" class="tab-pane"></div>
+                            <div id="tab-more" class="tab-pane"></div>
+                        </div>
+                        <div class="tab-nav">
+                            <button class="tab-btn active" data-tab="overview">概览</button>
+                            <button class="tab-btn" data-tab="registration">注册</button>
+                            <button class="tab-btn" data-tab="more">更多</button>
+                        </div>
                     </div>
                 </div>
             </div>
