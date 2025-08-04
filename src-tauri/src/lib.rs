@@ -3,6 +3,8 @@ use tauri::{AppHandle, Manager, State, WindowEvent};
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use auto_launch::AutoLaunch;
+use winreg::enums::*;
+use winreg::RegKey;
 
 // --- Data Structures ---
 
@@ -21,12 +23,87 @@ impl Default for AppConfig {
     }
 }
 
+#[derive(serde::Serialize)]
+struct LibraryInfo {
+    name: String,
+    library_type: String, 
+}
+
+#[derive(serde::Serialize)]
+struct LibraryQueryResult {
+    libraries: Vec<LibraryInfo>,
+    total_count: usize,
+    standard_count: usize,
+    custom_count: usize,
+}
+
 struct AppState {
     app_config: Mutex<AppConfig>,
     auto_launch: Mutex<Option<AutoLaunch>>,
 }
 
 // --- Tauri Commands (callable from frontend) ---
+
+#[tauri::command]
+fn get_installed_libraries() -> Result<LibraryQueryResult, String> {
+    let mut libraries = Vec::new();
+    let mut standard_count = 0;
+    let mut custom_count = 0;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    
+    // According to the new log analysis, the primary index is in HKLM\...\Content
+    let content_key_path = "SOFTWARE\\WOW6432Node\\Native Instruments\\Content";
+    let content_key = hklm.open_subkey(content_key_path)
+        .map_err(|e| format!("Failed to open HKLM Content key: {}", e))?;
+
+    let ni_key_hklm_base = hklm.open_subkey("SOFTWARE\\WOW6432Node\\Native Instruments")
+        .map_err(|e| format!("Failed to open HKLM NI base key: {}", e))?;
+
+    // Enumerate VALUES, not keys, as per the new report. The value data is the library name.
+    for (_, value) in content_key.enum_values().filter_map(Result::ok) {
+        let library_name: String = value.to_string();
+
+        // **FIX**: Exclude the "UserPatches" entry as observed in other tools.
+        if library_name == "UserPatches" {
+            continue;
+        }
+        
+        // Now, verify the type by checking for HU/JDX in HKLM\...\<Library Name>
+        let library_type = match ni_key_hklm_base.open_subkey(&library_name) {
+            Ok(library_key_hklm) => {
+                let has_hu = library_key_hklm.get_value::<String, _>("HU").is_ok();
+                let has_jdx = library_key_hklm.get_value::<String, _>("JDX").is_ok();
+
+                if has_hu && has_jdx {
+                    standard_count += 1;
+                    "标准音色库".to_string()
+                } else {
+                    custom_count += 1;
+                    "自定义音色库".to_string()
+                }
+            }
+            Err(_) => {
+                // If the specific library key doesn't exist under NI in HKLM, it's custom.
+                custom_count += 1;
+                "自定义音色库".to_string()
+            }
+        };
+
+        libraries.push(LibraryInfo {
+            name: library_name,
+            library_type,
+        });
+    }
+
+    Ok(LibraryQueryResult {
+        libraries,
+        total_count: standard_count + custom_count,
+        standard_count,
+        custom_count,
+    })
+}
+
 
 #[tauri::command]
 fn get_config(state: State<AppState>) -> Result<AppConfig, String> {
@@ -124,14 +201,13 @@ fn update_tray_menu(app: &AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    use tauri::{menu::{Menu, MenuItem}, tray::TrayIconBuilder};
+    use tauri::{tray::TrayIconBuilder, menu::Menu};
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init()) // Keep essential plugins
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             
-            // This is the FIX for the startup glitch.
             // The blur effect is disabled as per user request.
             // #[cfg(target_os = "windows")]
             // {
@@ -187,7 +263,7 @@ pub fn run() {
                     if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) { window.hide().unwrap(); } else { window.show().unwrap(); window.set_focus().unwrap(); }
+                             if window.is_visible().unwrap_or(false) { window.hide().unwrap(); } else { window.show().unwrap(); window.set_focus().unwrap(); }
                         }
                     }
                 })
@@ -209,7 +285,8 @@ pub fn run() {
             get_config,
             set_auto_start,
             set_silent_start,
-            save_config
+            save_config,
+            get_installed_libraries
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

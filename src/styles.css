@@ -62,6 +62,15 @@ body {
   border-radius: 9px 9px 0 0;
 }
 
+#library-summary {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    /* This will push the window controls to the far right */
+    margin-right: auto; 
+    padding-left: 1.5rem;
+}
+
 .header .title {
   font-size: 1rem;
   font-weight: 600;
@@ -169,4 +178,75 @@ h2 {
 
 .info-content p {
     color: var(--text-secondary);
+}
+
+/* ===================== Library Table Styles ===================== */
+
+.table-container {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* Add scrollbar if content overflows */
+    border-radius: 6px;
+    background: var(--bg-primary);
+    box-shadow: var(--neumorphism-pressed);
+}
+
+#library-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-primary);
+}
+
+#library-table th, #library-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+#library-table thead th {
+    background-color: var(--bg-secondary);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    cursor: pointer; /* Add cursor pointer to indicate it's clickable */
+    transition: background-color 0.2s ease;
+}
+
+#library-table thead th:hover {
+    background-color: var(--bg-tertiary);
+}
+
+#library-table thead th.sort-asc::after,
+#library-table thead th.sort-desc::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+#library-table thead th.sort-asc::after {
+    border-bottom: 5px solid var(--text-primary);
+}
+
+#library-table thead th.sort-desc::after {
+    border-top: 5px solid var(--text-primary);
+}
+
+
+#library-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+#library-table tbody tr:hover {
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+}
+
+#library-table tbody tr:last-child td {
+    border-bottom: none;
 }
