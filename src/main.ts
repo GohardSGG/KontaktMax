@@ -162,11 +162,15 @@ async function loadLibraries() {
 }
 
 function setupTabListeners() {
-    document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(button => {
+    const tabButtons = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
+    
+    tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const tabId = button.dataset.tab;
-            document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            // Update buttons
+            tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
+            // Update content panes
             document.querySelectorAll<HTMLElement>('.tab-pane').forEach(pane => {
                 pane.classList.remove('active');
                 if (pane.id === `tab-${tabId}`) {
@@ -175,6 +179,31 @@ function setupTabListeners() {
             });
         });
     });
+
+    const tabNav = document.querySelector<HTMLElement>('.tab-nav');
+    if (tabNav) {
+        tabNav.addEventListener('wheel', (e) => {
+            e.preventDefault(); // Prevent page scrolling
+
+            const buttons = Array.from(tabButtons);
+            const currentIndex = buttons.findIndex(btn => btn.classList.contains('active'));
+            let nextIndex = currentIndex;
+
+            if (e.deltaY > 0) { // Scrolling down
+                if (currentIndex < buttons.length - 1) {
+                    nextIndex = currentIndex + 1;
+                }
+            } else { // Scrolling up
+                if (currentIndex > 0) {
+                    nextIndex = currentIndex - 1;
+                }
+            }
+
+            if (nextIndex !== currentIndex) {
+                buttons[nextIndex].click();
+            }
+        });
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {

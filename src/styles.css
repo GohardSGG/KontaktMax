@@ -103,7 +103,7 @@ body {
 .main-content {
   flex-grow: 1;
   display: flex;
-  padding: 1rem;
+  padding: 0.8rem;
   gap: 1rem;
   overflow: hidden;
 }
@@ -294,13 +294,13 @@ body {
     flex-direction: column;
     border-left: 1px solid var(--bg-tertiary);
     flex-shrink: 0; /* Prevent the nav from shrinking */
-    width: 39px; /* Further reduced width */
+    width: 36px; /* Further reduced width */
     background-color: var(--bg-tertiary);
     border-radius: 6px;
     margin-left: 0.2rem;
     margin-right: -0.5rem;
-    margin-top: -0.5rem;
-    margin-bottom: -0.5rem;
+    margin-top: -0.6rem;
+    margin-bottom: -0.6rem;
 }
 
 .tab-btn {
@@ -310,10 +310,11 @@ body {
     border: none;
     color: var(--text-secondary);
     font-weight: 500;
+    font-size: 0.9rem; /* Custom font size for tab buttons */
     text-align: center;
     border-right: 3px solid transparent;
     transition: all 0.2s ease;
-    writing-mode: vertical-rl; /* Vertical text */
+    writing-mode: vertical-rl;
 }
 
 .tab-btn:hover {
@@ -321,8 +322,9 @@ body {
 }
 
 .tab-btn.active {
-    color: var(--accent-blue);
-    border-right-color: var(--accent-blue);
+    background-color: var(--accent-blue);
+    color: var(--text-primary);
+    border-right-color: transparent; /* Ensure border is not shown when active */
 }
 
 .tab-content {
