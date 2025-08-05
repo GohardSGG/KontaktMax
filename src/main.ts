@@ -36,6 +36,49 @@ let tabContent: HTMLElement | null;
 let headerWrapper: HTMLElement | null;
 let bodyWrapper: HTMLElement | null;
 
+// 复制功能相关函数
+function showCopyToast(message: string) {
+    // 创建提示元素
+    const toast = document.createElement('div');
+    toast.className = 'copy-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // 显示动画
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // 1.5秒后移除
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 200);
+    }, 800);
+}
+
+function fallbackCopyTextToClipboard(text: string) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopyToast('路径已复制到剪切板');
+        } else {
+            showCopyToast('复制失败');
+        }
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showCopyToast('复制失败');
+    }
+    
+    document.body.removeChild(textArea);
+}
+
 function initializeDOMElements() {
     headerTable = document.getElementById('header-table') as HTMLTableElement;
     bodyTableBody = document.querySelector('#body-table tbody');
@@ -114,8 +157,8 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
                         <span>暂无图片</span>
                     </div>
                 </div>
-                <div class="overview-separator"></div>
                 <div class="overview-path-container">
+                    <div class="overview-separator"></div>
                     <div id="library-path" class="library-path"></div>
                 </div>
             `;
@@ -131,8 +174,22 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
                     pathElement.classList.add('long-path');
                 }
                 
-                // 添加点击打开文件夹功能
-                pathElement.addEventListener('click', () => {
+                // 添加点击复制路径功能
+                pathElement.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        await navigator.clipboard.writeText(details.content_dir as string);
+                        showCopyToast('路径已复制到剪切板');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        // 如果现代API失败，尝试旧方法
+                        fallbackCopyTextToClipboard(details.content_dir as string);
+                    }
+                });
+                
+                // 添加右键打开文件夹功能
+                pathElement.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
                     open(details.content_dir as string);
                 });
             } else if (pathElement) {
@@ -176,7 +233,7 @@ function sortAndRender() {
     if (!bodyTableBody) return;
     bodyTableBody.innerHTML = ''; 
     currentLibraries.forEach(lib => {
-        const row = bodyTableBody.insertRow();
+        const row = bodyTableBody!.insertRow();
         row.addEventListener('click', () => handleRowClick(row, lib));
         
         row.insertCell(0).textContent = lib.name;
@@ -283,10 +340,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // --- Scroll Synchronization Logic ---
   if (headerWrapper && bodyWrapper) {
       headerWrapper.addEventListener('scroll', () => {
-          bodyWrapper.scrollLeft = headerWrapper.scrollLeft;
+          bodyWrapper!.scrollLeft = headerWrapper!.scrollLeft;
       });
       bodyWrapper.addEventListener('scroll', () => {
-          headerWrapper.scrollLeft = bodyWrapper.scrollLeft;
+          headerWrapper!.scrollLeft = bodyWrapper!.scrollLeft;
       });
   }
 });

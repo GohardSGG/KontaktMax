@@ -609,10 +609,10 @@ body {
     90deg, 
     transparent 0%, 
     var(--bg-tertiary) 20%, 
-    var(--bg-tertiary) 80%, 
+    var(--bg-tertiary) 90%, 
     transparent 100%
   );
-  margin: 1rem 2rem;
+  margin: 0rem 0rem 0.1rem 0rem;
   flex-shrink: 0;
 }
 
@@ -624,7 +624,8 @@ body {
   width: 100%;
   max-width: 100%;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: flex-end;
   min-height: 3rem;
 }
 
@@ -637,7 +638,7 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  padding: 0.1rem 0.1rem;
+  padding: 0rem 0rem;
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
@@ -648,15 +649,32 @@ body {
   max-width: 100%;
   box-sizing: border-box;
   margin-bottom: 0rem;
+  border: 1px solid transparent;
+}
+
+.library-path::before {
+  content: '📋';
+  position: absolute;
+  right: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-size: 0.7rem;
 }
 
 .library-path:hover {
   opacity: 0.9;
   background: rgba(64, 70, 81, 0.3);
+  border-color: var(--accent-blue);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: clip;
   animation: scrollPathText 6s linear infinite;
+}
+
+.library-path:hover::before {
+  opacity: 1;
 }
 
 .library-path.long-path::after {
@@ -688,4 +706,32 @@ body {
   25% { text-indent: 0; }
   75% { text-indent: -100%; }
   100% { text-indent: -100%; }
+}
+
+/* ===================== Copy Toast Notification ===================== */
+
+.copy-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  box-shadow: 
+    4px 4px 12px var(--shadow-dark),
+    -4px -4px 12px var(--shadow-light);
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 10000;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.copy-toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
