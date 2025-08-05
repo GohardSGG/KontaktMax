@@ -72,6 +72,27 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
     tabContent.style.display = 'block';
 
     infoHeader.textContent = lib.name;
+    
+    // 显示和配置 Fix 按钮
+    const fixBtn = document.getElementById('fix-btn') as HTMLButtonElement;
+    if (fixBtn) {
+        fixBtn.style.display = 'flex';
+        fixBtn.className = 'fix-btn';
+        
+        // 根据注册状态设置按钮样式
+        if (lib.registration_status === '0/3') {
+            fixBtn.classList.add('error');
+        } else if (lib.registration_status !== '3/3') {
+            fixBtn.classList.add('warning');
+        }
+        
+        // 添加点击事件
+        fixBtn.onclick = () => {
+            console.log(`尝试修复音色库: ${lib.name}`);
+            // TODO: 实现修复功能
+        };
+    }
+
     document.querySelectorAll('.tab-pane').forEach(pane => {
         (pane as HTMLElement).innerHTML = '<p>正在加载...</p>';
     });
@@ -81,21 +102,43 @@ async function handleRowClick(row: HTMLTableRowElement, lib: LibraryInfo) {
         
         const overviewTab = document.getElementById('tab-overview');
         if (overviewTab) {
-            overviewTab.innerHTML = ''; 
-            if (details.content_dir) {
-                const p = document.createElement('p');
-                p.textContent = '文件目录: ';
-                const link = document.createElement('a');
-                link.href = '#';
-                link.textContent = details.content_dir;
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
+            // 重新构建概览界面的HTML结构
+            overviewTab.innerHTML = `
+                <div class="overview-image-container">
+                    <div class="image-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21,15 16,10 5,21"></polyline>
+                        </svg>
+                        <span>暂无图片</span>
+                    </div>
+                </div>
+                <div class="overview-separator"></div>
+                <div class="overview-path-container">
+                    <div id="library-path" class="library-path"></div>
+                </div>
+            `;
+            
+            // 设置路径内容
+            const pathElement = document.getElementById('library-path');
+            if (pathElement && details.content_dir) {
+                pathElement.textContent = details.content_dir;
+                pathElement.title = details.content_dir;
+                
+                // 检查路径长度，添加长路径类
+                if (details.content_dir.length > 50) {
+                    pathElement.classList.add('long-path');
+                }
+                
+                // 添加点击打开文件夹功能
+                pathElement.addEventListener('click', () => {
                     open(details.content_dir as string);
                 });
-                p.appendChild(link);
-                overviewTab.appendChild(p);
-            } else {
-                overviewTab.innerHTML = '<p>未找到该库的文件目录信息。</p>';
+            } else if (pathElement) {
+                pathElement.textContent = '未找到该库的文件目录信息';
+                pathElement.style.color = 'var(--text-muted)';
+                pathElement.style.fontStyle = 'italic';
             }
         }
 
@@ -206,6 +249,12 @@ window.addEventListener('DOMContentLoaded', () => {
       infoHeader.style.display = 'none';
       tabNav.style.display = 'none';
       tabContent.style.display = 'none';
+  }
+  
+  // 初始时隐藏Fix按钮
+  const fixBtn = document.getElementById('fix-btn');
+  if (fixBtn) {
+      fixBtn.style.display = 'none';
   }
   
   const closeBtn = document.getElementById('close-btn');
