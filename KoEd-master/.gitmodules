@@ -1,0 +1,9 @@
+[submodule "GitSubmodules/WinReg"]
+	path = GitSubmodules/WinReg
+	url = https://github.com/GiovanniDicanio/WinReg
+	ignore = dirty
+
+[submodule "GitSubmodules/tinyxml2"]
+	path = GitSubmodules/tinyxml2
+	url = https://github.com/leethomason/tinyxml2
+	ignore = dirty

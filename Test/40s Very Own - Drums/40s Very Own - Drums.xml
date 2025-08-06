@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<ProductHints spec="1.0.16">
+
+  <Product version="1">
+    <UPID>ff06c804-8b3c-4d02-8271-577bb34c2cab</UPID>
+    <Name>40s Very Own - Drums</Name>
+    <Type>Content</Type>
+    <NKSEnabled>true</NKSEnabled>
+    <Relevance>
+      <Application minVersion="5.0.0.0" nativeContent="true">kontakt</Application>
+      <Application>maschine</Application>
+      <Application>kkontrol</Application>
+    </Relevance>
+    <PoweredBy>Kontakt</PoweredBy>
+    <Visibility target="Standalone">7</Visibility>
+    <Company>Native Instruments GmbH</Company>
+    <AuthSystem>RAS3</AuthSystem>
+    <SNPID>KE8</SNPID>
+    <RegKey>40s Very Own - Drums</RegKey>
+    <Icon>kontakt</Icon>
+    <ProductSpecific>
+      <HU>A5304C76124D9D8C47084973AE6FC648</HU>
+      <JDX>35F8826CA3190B178BDA668C46A0B5453843D1D1DAF0D72B4D5AB6E03D4ED8DF</JDX>
+      <Visibility type="Number">3</Visibility>
+    </ProductSpecific>
+  </Product>
+
+</ProductHints>
